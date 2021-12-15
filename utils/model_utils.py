@@ -9,7 +9,7 @@ from tqdm import tqdm
 from functools import partial
 import matplotlib.pyplot as plt
 from copy import deepcopy
-
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
 
 def corr_pred(X, y) -> list:
@@ -257,3 +257,98 @@ def error_wrt_depth(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray
         plt.show()
 
 
+def analyze_ensemble_size(data: tuple, cls: str, params_list: list, n_estimators_list: list):
+    """ Analiza zavisnosti hiper-parametara od velicine ansambla """
+
+    def train_and_evaluate(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray,
+                           y_test: np.ndarray, cls: str, params: dict, n_estimators: int) -> tuple:
+        # Kreiranje modela
+        if cls.lower() == 'rf':
+            model = RandomForestClassifier(n_estimators=n_estimators, random_state=1234, **params)
+        elif cls.lower() == 'gb':
+            model = GradientBoostingClassifier(n_estimators=n_estimators, random_state=1234, **params)
+
+        # Obucavanje modela
+        model.fit(X_train, y_train)
+        # Predikcija
+        y_train_hat, y_test_hat = model.predict(X_train), model.predict(X_test)
+        # Procenat gresaka na obucavajucem i testirajucem/validacionom skupu
+        train_acc, test_acc = accuracy(y_train, y_train_hat), accuracy(y_test, y_test_hat)
+        
+        return train_acc, test_acc
+
+    def evaluate_ensemble_size(evaluate, n_estimators_list: int, params: dict):
+
+        # Fiksiranje hiper-parametara
+        evaluate_ = partial(evaluate, params)
+
+        # Obucavanje i evaluacija
+        results = list(map(lambda x: evaluate_(x), n_estimators_list))
+
+        # Podaci o tacnosti
+        train_acc = list(map(lambda x: x[0], results))
+        test_acc = list(map(lambda x: x[1], results))
+
+        return train_acc, test_acc
+        
+    def parse_dict(d: dict):
+        """ Konverzija recnika u nisku """
+        return ", ".join(list(map(lambda x: f"{x[0]}={x[1]}", d.items())))
+
+    # Fiksiranje podataka i tipa klasifikatora
+    train_and_evaluate_fix = partial(train_and_evaluate, *data, cls)
+
+    # Fiksiranje funkcije i liste velicina estimatora
+    evaluate_ensemble_size_ = partial(evaluate_ensemble_size, train_and_evaluate_fix, n_estimators_list)
+
+    # Obucavanje i evaluacija modela
+    results = list(map(lambda x: evaluate_ensemble_size_(x), params_list))
+
+    # Informacija o tacnosti
+    train_acc_list = list(map(lambda x: x[0], results))
+    test_acc_list = list(map(lambda x: x[1], results))
+
+    # Konverzija kombinacije hiper-parametra u niske
+    labels = list(map(lambda x: parse_dict(x), params_list))
+
+    # Prikaz grafika
+    fig, axes = plt.subplots(nrows=2, figsize=(25,10))
+    ax = axes.ravel()
+    
+    plt.suptitle('Tačnost modela za različite vrednosti hiper-parametara u zavisnosti od veličine ansambla')
+    for train_acc, label in zip(train_acc_list, labels):
+        ax[0].plot(n_estimators_list, train_acc, label=label)
+    ax[0].set_xlabel('Veličina ansambla')
+    ax[0].set_ylabel('Tačnost')
+    ax[0].set_title('Obučavajući skup')
+    ax[0].legend()
+
+    for test_acc, label in zip(test_acc_list, labels):
+        plt.plot(n_estimators_list, test_acc, label=label)
+    ax[1].set_xlabel('Veličina ansambla')
+    ax[1].set_ylabel('Tačnost')
+    ax[1].set_title('Validacioni skup')
+    ax[1].legend()
+    plt.show()
+
+
+def get_combinations(d: dict) -> list:
+    """ Reformatiranje hiper-parametara"""
+    
+    rep_elem = [1]
+    num_combinations = len(list(d.values())[0])
+    for v in reversed(list(d.values())[1:]):
+        num_combinations *= len(v)
+        rep_elem.append(rep_elem[-1]*len(v))
+    rep_elem.reverse()
+    # Generisanje kombinacija
+    d1 = {item[0]: np.repeat(np.array(item[1]),rep).tolist()*int(num_combinations // (len(item[1] * rep))) for item, rep in zip(d.items(), rep_elem)}
+    # Lista imena hiper-parametara
+    prams_names = list(d.keys())
+    # Izdjavanje jednog skupa hiper-parametara
+    get_one = lambda x: {name: d1[name][x] for name in prams_names}
+    # Indeksi kombinacija
+    inds = [i for i in range(num_combinations)]
+    params_list = list(map(lambda x: get_one(x), inds))
+
+    return params_list

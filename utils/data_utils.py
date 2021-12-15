@@ -9,7 +9,7 @@ def read_data(path: str = "./data/data_1.csv") -> tuple:
     Xy = pd.read_csv(path).to_numpy()
 
     # Razdvajanje ulaza i izlaza
-    X, y = Xy[:,:-1], Xy[:,-1].reshape(-1,1)
+    X, y = Xy[:,:-1], Xy[:,-1]#.reshape(-1,1)
 
     return X, y
 
