@@ -134,7 +134,7 @@ def wrapper(X: np.ndarray, y: np.ndarray, nfolds: int = 4):
 
 
 def train_subsampled_predictors(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray,
-                           y_test: np.ndarray, pred_order: list, disp: bool = True) -> None:
+                           y_test: np.ndarray, pred_order: list, title: str, disp: bool = True) -> None:
     """ Obucavanje modela logisticke regresije na podskupovima prediktora """
 
     # Niz trenutno koriscenih prediktora
@@ -177,7 +177,7 @@ def train_subsampled_predictors(X_train: np.ndarray, y_train: np.ndarray, X_test
         plt.plot(xaxis, test_acc)
         plt.xticks(ticks=xaxis, labels=pred_order)
         plt.legend(['Obučavajući skup','Validacioni skup'])
-        plt.title('Zavisnost tačnosti od izabranih prediktora')
+        plt.title(f'Zavisnost tačnosti od izabranih prediktora ({title})')
         plt.ylabel('Tačnost')
         plt.grid(axis='y')
         plt.show()
@@ -257,7 +257,7 @@ def error_wrt_depth(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray
         plt.show()
 
 
-def analyze_ensemble_size(data: tuple, cls: str, params_list: list, n_estimators_list: list):
+def analyze_ensemble_size(data: tuple, cls: str, params_list: list, n_estimators_list: list, n_split: int = 1):
     """ Analiza zavisnosti hiper-parametara od velicine ansambla """
 
     def train_and_evaluate(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray,
@@ -311,25 +311,31 @@ def analyze_ensemble_size(data: tuple, cls: str, params_list: list, n_estimators
     # Konverzija kombinacije hiper-parametra u niske
     labels = list(map(lambda x: parse_dict(x), params_list))
 
-    # Prikaz grafika
-    fig, axes = plt.subplots(nrows=2, figsize=(25,10))
-    ax = axes.ravel()
-    
-    plt.suptitle('Tačnost modela za različite vrednosti hiper-parametara u zavisnosti od veličine ansambla')
-    for train_acc, label in zip(train_acc_list, labels):
-        ax[0].plot(n_estimators_list, train_acc, label=label)
-    ax[0].set_xlabel('Veličina ansambla')
-    ax[0].set_ylabel('Tačnost')
-    ax[0].set_title('Obučavajući skup')
-    ax[0].legend()
+    # Funkcija za pracanje listi
+    split_list = lambda lst: list(map(lambda x: x.tolist(), np.array_split(lst, n_split)))
 
-    for test_acc, label in zip(test_acc_list, labels):
-        plt.plot(n_estimators_list, test_acc, label=label)
-    ax[1].set_xlabel('Veličina ansambla')
-    ax[1].set_ylabel('Tačnost')
-    ax[1].set_title('Validacioni skup')
-    ax[1].legend()
-    plt.show()
+    for train_acc_list_, test_acc_list_, labels_ in zip(split_list(train_acc_list),
+                                                        split_list(test_acc_list),
+                                                        split_list(labels)):
+        # Prikaz grafika
+        fig, axes = plt.subplots(nrows=2, figsize=(25,10))
+        ax = axes.ravel()
+        
+        plt.suptitle('Tačnost modela za različite vrednosti hiper-parametara u zavisnosti od veličine ansambla')
+        for train_acc, label in zip(train_acc_list_, labels_):
+            ax[0].plot(n_estimators_list, train_acc, label=label)
+        ax[0].set_xlabel('Veličina ansambla')
+        ax[0].set_ylabel('Tačnost')
+        ax[0].set_title('Obučavajući skup')
+        ax[0].legend()
+
+        for test_acc, label in zip(test_acc_list_, labels_):
+            plt.plot(n_estimators_list, test_acc, label=label)
+        ax[1].set_xlabel('Veličina ansambla')
+        ax[1].set_ylabel('Tačnost')
+        ax[1].set_title('Validacioni skup')
+        ax[1].legend()
+        plt.show()
 
 
 def get_combinations(d: dict) -> list:
