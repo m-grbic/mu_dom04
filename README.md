@@ -1,2 +1,2 @@
 # mu_dom04
-Četvrtak domaći zadatak iz mašinskog učenja.
+Četvrti domaći zadatak iz predmeta Mašinsko učenje.
