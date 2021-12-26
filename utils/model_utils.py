@@ -22,7 +22,7 @@ def corr_pred(X, y) -> list:
     # "ravnanje" nize
     y_ = y.flatten()
     # Korelacije prediktora
-    corr_coef = [np.correlate(X[:,ip], y_) for ip in range(X.shape[1])]
+    corr_coef = [abs(np.corrcoef(X[:,ip], y_)[0,1]) for ip in range(X.shape[1])]
     # Indeksi prediktora
     pred_inds = [ip for ip in range(X.shape[1])]
 
@@ -32,6 +32,15 @@ def corr_pred(X, y) -> list:
     # Sortiranje od najboljeg ka najgorem
     corr_coef.reverse()
     pred_inds.reverse()
+
+    sorted_inds = [i for i in range(len(pred_inds))]
+    plt.figure(figsize=(16,6))
+    plt.stem(sorted_inds, corr_coef)
+    plt.xticks(sorted_inds, pred_inds)
+    plt.xlabel('Redni broj prediktora')
+    plt.ylabel('Koeficijent korelacije')
+    plt.title('Koeficijenti korelacije pojedinačnih prediktora sa ciljnom promenljivom')
+    plt.show()
 
     return pred_inds
 
@@ -179,7 +188,8 @@ def train_subsampled_predictors(X_train: np.ndarray, y_train: np.ndarray, X_test
         plt.legend(['Obučavajući skup','Validacioni skup'])
         plt.title(f'Zavisnost tačnosti od izabranih prediktora ({title})')
         plt.ylabel('Tačnost')
-        plt.grid(axis='y')
+        plt.xlabel('Redni broj prediktora')
+        plt.grid()
         plt.show()
 
 
@@ -253,7 +263,7 @@ def error_wrt_depth(X_train: np.ndarray, y_train: np.ndarray, X_test: np.ndarray
         plt.ylabel('Broj pogrešno klasifikovanih primera')
         plt.xlabel('Dubina stabla')
         plt.xticks(ticks=depth_list, labels=depth_list)
-        plt.grid(axis='y')
+        plt.grid()
         plt.show()
 
 
@@ -268,6 +278,8 @@ def analyze_ensemble_size(data: tuple, cls: str, params_list: list, n_estimators
         elif cls.lower() == 'gb':
             model = GradientBoostingClassifier(n_estimators=n_estimators, random_state=1234, **params)
 
+        # Ravnanje nizova
+        y_train, y_test = y_train.flatten(), y_test.flatten()
         # Obucavanje modela
         model.fit(X_train, y_train)
         # Predikcija
@@ -321,20 +333,27 @@ def analyze_ensemble_size(data: tuple, cls: str, params_list: list, n_estimators
         fig, axes = plt.subplots(nrows=2, figsize=(25,10))
         ax = axes.ravel()
         
-        plt.suptitle('Tačnost modela za različite vrednosti hiper-parametara u zavisnosti od veličine ansambla')
+        plt.suptitle('Tačnost modela za različite vrednosti hiper-parametara u zavisnosti od veličine ansambla', fontsize=16)
+        itr, styles = 0, ['-','--','-.',':']
         for train_acc, label in zip(train_acc_list_, labels_):
-            ax[0].plot(n_estimators_list, train_acc, label=label)
+            ax[0].plot(n_estimators_list, train_acc, label=label, linestyle=styles[itr%len(styles)])
+            itr += 1
         ax[0].set_xlabel('Veličina ansambla')
         ax[0].set_ylabel('Tačnost')
         ax[0].set_title('Obučavajući skup')
-        ax[0].legend()
-
+        ax[0].grid()
+        ax[0].legend(loc='lower right')
+        ax[0].set_xlim(0, n_estimators_list[-1])
+        itr = 0
         for test_acc, label in zip(test_acc_list_, labels_):
-            plt.plot(n_estimators_list, test_acc, label=label)
+            plt.plot(n_estimators_list, test_acc, label=label, linestyle=styles[itr%len(styles)])
+            itr += 1
         ax[1].set_xlabel('Veličina ansambla')
         ax[1].set_ylabel('Tačnost')
         ax[1].set_title('Validacioni skup')
-        ax[1].legend()
+        ax[1].grid()
+        ax[1].legend(loc='lower right')
+        ax[1].set_xlim(0, n_estimators_list[-1])
         plt.show()
 
 

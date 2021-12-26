@@ -29,8 +29,8 @@ def train_test_split(X: np.ndarray, y: np.ndarray, train_ratio: int = 0.8, rando
     ind_train = random.sample(ind, n_train)
     ind_test = [i for i in ind if i not in ind_train]
 
-    X_train, y_train = X[ind_train], y[ind_train]
-    X_test, y_test = X[ind_test], y[ind_test]
+    X_train, y_train = X[ind_train], y[ind_train].reshape(-1,1)
+    X_test, y_test = X[ind_test], y[ind_test].reshape(-1,1)
 
     assert (X_train.shape[0] + X_test.shape[0]) == X.shape[0]
     assert (y_train.shape[0] + y_test.shape[0]) == y.shape[0]
